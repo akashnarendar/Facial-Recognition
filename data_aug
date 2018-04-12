@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb  7 14:34:22 2018
+
+@author: Akash
+"""
+import numpy as np
+import cv2 # opencv
+import os # control and access the directory structure in local machine
+from matplotlib import pyplot as plt
+
+
+os.chdir('/Users/akash/Downloads/Face_final') #folder where I unzipped data.zip
+haarcascades_path = os.listdir('/Users/akash/Desktop')
+frontface_alt_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_alt.xml'
+frontface_default_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_default.xml'
+frontface_alt2_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_alt2.xml'
+frontface_alt_tree_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_alt2.xml'
+
+#utility function to apply differenct cascade function on the images at difference scaleFactor
+def detect(faceCascade, gray_,  scaleFactor_ = 1.1):
+    faces = faceCascade.detectMultiScale(
+                    gray_,
+                    scaleFactor= scaleFactor_,
+                    minNeighbors=5,
+                    minSize=(30, 30),
+                    flags = cv2.CASCADE_SCALE_IMAGE
+                )
+    return faces
+
+# code that iterates thru the images in the celebrityfaces dataset and detects faces. Finally it
+# ... only displays those images that it can't detect the faces.
+faceCascade_default = cv2.CascadeClassifier(frontface_default_cascade)
+faceCascade_alt = cv2.CascadeClassifier(frontface_alt_cascade)
+faceCascade_alt2 = cv2.CascadeClassifier(frontface_alt2_cascade)
+faceCascade_alt_tree = cv2.CascadeClassifier(frontface_alt_tree_cascade)
+#load training dataset of the faces data
+from os.path import basename
+
+for imgfolder in os.listdir('New_folder/train/'): #iterate thru each of the 5 celeb folders
+    if(imgfolder != '.DS_Store'):
+        for filename in os.listdir('New_folder/train/' + imgfolder):# iterate thru each image in a celeb folder
+            filename = 'New_folder/train/' + imgfolder + '/' + filename # build the path to the image file
+            if(filename.endswith('.jpg')):
+                img = cv2.imread(filename,0) # read the image using OpenCV
+                img1 = cv2.flip(img, 1)
+                filename_flip = 'New_folder/train/' + imgfolder + '/' + os.path.splitext(basename(filename))[0] + '_flip.jpg'
+                print(filename_flip)
+                cv2.imwrite(filename_flip, img1)
+                #break; 

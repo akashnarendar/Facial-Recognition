@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb 17 11:32:47 2018
+
+@author: Akash
+"""
+
+import numpy as np
+import cv2 # opencv
+import os # control and access the directory structure in local machine
+from matplotlib import pyplot as plt
+import time
+
+os.chdir('/Users/akash/') #folder where I unzipped data.zip
+
+#OpenCV cascades (xml files) are typically stored at this location
+#C:\Users\<user>\Miniconda3\Library\etc\haarcascades
+haarcascades_path = os.listdir('/Users/akash/Desktop')
+frontface_alt_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_alt.xml'
+frontface_default_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_default.xml'
+frontface_alt2_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_alt2.xml'
+frontface_alt_tree_cascade = '/Users/akash/Desktop/haarcascades/haarcascade_frontalface_alt2.xml'
+lbpcascadesPath = os.listdir("/Users/akash/Desktop/lbpcascades_2")
+lbp_frontface_path = "/Users/akash/Desktop/lbpcascades_2/lbpcascade_frontalface.xml"
+lbp_fronface_improved_path = "/Users/akash/Desktop/lbpcascades_2/lbpcascade_frontalface_improved.xml"
+lbp_frontface_profile_path = "/Users/akash/Desktop/lbpcascades_2/lbpcascade_profileface.xml"
+
+def detect(faceCascade, gray_,  scaleFactor_ = 1.1):
+    faces = faceCascade.detectMultiScale(
+                    gray_,
+                    scaleFactor= scaleFactor_,
+                    minNeighbors=5,
+                    minSize=(30, 30),
+                    flags = cv2.CASCADE_SCALE_IMAGE
+                )
+    return faces
+# code that iterates thru the images in the celebrityfaces dataset and detects faces. Finally it
+# ... only displays those images that it can't detect the faces.
+lbp_frontfaceCascade = cv2.CascadeClassifier(lbp_frontface_path)
+lbp_fronfaceimprovedCascade = cv2.CascadeClassifier(lbp_fronface_improved_path)
+lbp_profileCascade = cv2.CascadeClassifier(lbp_frontface_profile_path)
+
+
+
+#function to detect face using OpenCV
+def detect_face(img, face_cascade):
+    #convert the test image to gray scale as opencv face detector expects gray images
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    #load OpenCV face detector, I am using LBP which is fast
+    #there is also a more accurate but slow: Haar classifier
+    #face_cascade = cv2.CascadeClassifier('opencv-files/lbpcascade_frontalface.xml')
+
+    #let's detect multiscale images(some images may be closer to camera than others)
+    #result is a list of faces
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5);
+
+    #if no faces are detected then return original img
+    if (len(faces) == 0):
+        return None, None
+
+    #under the assumption that there will be only one face,
+    #extract the face area
+    (x, y, w, h) = faces[0]
+
+    #return only the face part of the image
+    return gray[y:y+w, x:x+h], faces[0]
+
+#this function will read all persons' training images, detect face from each image
+#and will return two lists of exactly same size, one list 
+#of faces and another list of labels for each face
+def prepare_training_data(trainfolder = '/Users/akash/Desktop/harini_12/'):
+    
+    #list to hold all subject faces
+    faces = []
+    #list to hold labels for all subjects
+    labels = []
+
+    label_names = ['']
+    total_images = 0
+    #lbp_frontfaceCascade = cv2.CascadeClassifier(lbp_frontface_path)
+    haar_faceCascade_default = cv2.CascadeClassifier(frontface_default_cascade)
+    haar_frontface_alt = cv2.CascadeClassifier(frontface_alt_cascade)
+    detected_images = []
+    values=[]
+    for imgfolder in os.listdir(trainfolder): #iterate thru each of the 5 celeb folders
+        if(imgfolder != '.DS_Store'):
+            label_names.append(imgfolder)
+            print(imgfolder)
+            count=0
+            for filename in os.listdir(trainfolder + imgfolder):# iterate thru each image in a celeb folder
+                filename = trainfolder + imgfolder + '/' + filename # build the path to the image file
+                if(filename.lower().endswith('.jpg')):
+                    total_images = total_images + 1
+                    img = cv2.imread(filename) # read the image using OpenCV
+                    #detect face
+                    face, rect = detect_face(img, haar_faceCascade_default) # lbp_frontfaceCascade)
+                    #------STEP-4--------
+                    #for the purpose of this tutorial
+                    #we will ignore faces that are not detected
+                    if face is not None:
+                        #add face to list of faces
+                        faces.append(face)
+                        count+=1
+                        #add label for this face
+                        labels.append(9)
+                        detected_images.append(filename)
+                        
+                        #print(label_names.index(imgfolder))
+                        continue
+                        
+                        plt.imshow(face, cmap = 'gray', interpolation = 'bicubic') # display all images read
+                        plt.xticks([]), plt.yticks([])
+                        plt.show()
+                    else:
+                        continue
+                        face = detect_face(img, haar_frontface_alt)
+                        if face is not None:
+                            faces.append(face)
+                            #add label for this face
+                            labels.append(9)
+                            detected_images.append(filename)
+                            count+=1
+           # values.append(count)
+    ##return faces, labels, detected_images, label_names, total_images,values
+#code to load the dataset and detect the faces and labels for training
+print("Preparing data...")
+
+
+faces, labels, detectedimages, label_names, total_images,values = prepare_training_data('/Users/akash/Desktop/harini_12/')
+print("Data prepared")
+
+#print total faces and labels
+print("Detected faces: ", len(faces))
+print("Detected labels: ", len(labels))
+print("Total Images: ", total_images)
+print(values)
+print(labels)
+print(sum(values))
+#print(labels)
+
+#function to draw rectangle on image 
+#according to given (x, y) coordinates and 
+#given width and heigh
+def draw_rectangle(img, rect):
+    (x, y, w, h) = rect
+    cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+ 
+#function to draw text on give image starting from
+#passed (x, y) coordinates. 
+def draw_text(img, text, x, y):
+     cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_PLAIN, 1.5, (0, 255, 0), 2)
+     
+     
+#Code to perform cross validation on the training set to get training score...
+def cross_val(cv = 5):
+    scores = []
+    while(cv > 0):
+        cv = cv - 1
+        from sklearn.cross_validation import train_test_split
+        Xtrain, Xtest, ytrain, ytest = train_test_split(faces, labels)
+        #print(len(Xtrain))
+        #print(len(Xtest))
+        #print(ytrain)
+        #print(ytest)
+        face_recognizer = cv2.face.LBPHFaceRecognizer_create()
+        face_recognizer.train(Xtrain, np.array(ytrain))
+        test_labels = []
+        pred_labels = []
+        i = -1
+        for face in Xtest:
+            i = i + 1
+            label = face_recognizer.predict(face)
+            print(label_names)
+           
+            label_text = label_names[1]
+            
+            #face, label = predict_train(face)
+            #print(label_names)
+            #print(ytest[i])
+            test_labels.append(label_names[1])
+            pred_labels.append(label_text)
+
+        from sklearn.metrics import accuracy_score
+        scores.append(accuracy_score(test_labels, pred_labels))
+    return scores
+
+        #from sklearn.metrics import confusion_matrix
+        #print(confusion_matrix(test_labels, pred_labels))
+print('Cross Validation to get Training Score...')
+scores =  cross_val(20)
+print (scores)
+print(np.mean(scores))
+
+
+#code to persist the trained model to use it later
+#face_recognizer = cv2.face.LBPHFaceRecognizer_create()
+#face_recognizer.train(faces, np.array(labels))
+
+#face_recognizer.write('/Users/akash/Downloads/Face-Recognition-master/Employee_dataset/ABC.yml')
+face_recognizer2 = cv2.face.LBPHFaceRecognizer_create()
+
+face_recognizer2.read('/Users/akash/Downloads/Face-Recognition-master/Employee_dataset/ABC.yml')
+face_recognizer2.update(faces,np.array(labels))
+
+test_labels = []
+pred_labels = []
+print(label_names)
+i = -1
+for face in faces:
+    print(face)
+    i = i + 1
+    label = face_recognizer2.predict(face)
+    print(label)
+    pred_labels.append(label[0])
+  
+
+from sklearn.metrics import accuracy_score
+print(accuracy_score(labels, pred_labels))
